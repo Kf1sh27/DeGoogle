@@ -9,7 +9,7 @@
 | Document Type | Security Architecture / Privacy Infrastructure Whitepaper |
 | Classification | Personal — Non-Commercial |
 | Scope | Mobile OS, Identity, Data Storage, Backup, Automation |
-| Audience | Privacy Engineers, Security Professionals, Self-Hosters, GrapheneOS Users |
+| Audience | Privacy seekers, Self-Hosters, GrapheneOS User |
 | Status | Living Document |
 
 ---
