@@ -29,7 +29,7 @@
 
 ## 1. Architecture Overview
 
-**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account as a unifying identity.
+**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account dependency, no vendor lock-in, no cloud-only data retention.
 
 Four layers:
 
@@ -58,7 +58,7 @@ flowchart TB
         CardDAV[CardDAV]
         CalDAV[CalDAV]
         TaskDAV[CalDAV<br/>Tasks Sync]
-        SMB[SMB / SMBSync3]
+        SMB[SMB / SambaLite]
     end
 
     subgraph Homelab["Self-Hosted Service Layer"]
@@ -88,7 +88,7 @@ flowchart TB
     CryptoVault --> Restic
 ```
 
-**How it works end to end:** a device app talks only to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service's data is pulled into encrypted backups independently. NetGuard enforces network policy at the device layer, ensuring only approved LAN connectivity and blocking internet access for services that should be local-only.
+**How it works end to end:** a device app talks only to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service's data is pulled into a user-owned backup flow → no primary path depends on a Google account, API, or cloud storage bucket.
 
 ---
 
@@ -105,15 +105,15 @@ flowchart TB
 | Password Manager **+** Authenticator | **Bitwarden (self-hosted)** — vault + built-in TOTP | ✔ | ✔ |
 | YouTube | NewPipe | ✖ | N/A |
 | Location History | Traccar | ✔ | ✔ |
-| Drive Sync | SMBSync3 | ✔ | ✔ |
+| Drive Sync | SambaLite | ✔ | ✔ |
 | Drive (sensitive files) | Cryptomator | Optional | ✔ |
 | YouTube Music | Jellyfin / Poweramp | ✔ | ✔ |
 | Recorder | Fossify Voice Recorder | ✖ | ✔ |
 | Home | Home Assistant | ✔ | ✔ |
 | Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ |
-| Backup | GrapheneOS Export + SMBSync3 + Restic/Duplicati | ✔ | ✔ |
+| Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ |
 
-**Only remaining Google footprint:** sandboxed Google Play Services, kept for app compatibility only (see [Section 11](#11-remaining-google-dependency)).
+| **Only remaining Google footprint:** sandboxed Google Play Services, kept for app compatibility only (see [Section 11](#11-remaining-google-dependency)).
 
 ---
 
@@ -148,14 +148,14 @@ pie title Replacement Type
 | Passwords + 2FA/TOTP | **Bitwarden (self-hosted)** | Local server | ✔ (zero-knowledge) | Restic + Duplicati + encrypted vault export |
 | Location History | Traccar | Local server | ✔ | Restic |
 | Music / Video Library | Jellyfin / Poweramp | Local NAS | Optional | Restic |
-| Voice Recordings | Fossify Voice Recorder | Device | Device-level | SMBSync3 + Restic |
+| Voice Recordings | Fossify Voice Recorder | Device | Device-level | SambaLite + Restic |
 | Smart Home Data | Home Assistant | Local server | ✔ | Restic + Duplicati |
-| Device Backup | GrapheneOS Export | Local storage | ✔ | SMBSync3 + Restic |
+| Device Backup | GrapheneOS Export | Local storage | ✔ | SambaLite + Restic |
 | Sensitive Files | Cryptomator | Local NAS | ✔ (client-side) | Restic |
-| File Sync | SMBSync3 | LAN only | Transport-dependent | N/A |
+| File Sync | SambaLite | LAN only | Transport-dependent | N/A |
 | Network Policy | NetGuard rules | Device | N/A (per-app firewall) | Device config export |
 
-**Why this works:** encryption happens as close to the data's origin as possible (client-side for Bitwarden and Cryptomator), so plaintext crosses the fewest possible trust boundaries. Network policy is enforced at the device layer via NetGuard, preventing unauthorized external leakage. Every row has an independent backup chain.
+**Why this works:** encryption happens as close to the data's origin as possible (client-side for Bitwarden and Cryptomator), so plaintext crosses the fewest possible trust boundaries. Network policy is enforced at the device layer to keep traffic local, and backups are kept independent from the live service path.
 
 ---
 
@@ -170,13 +170,13 @@ pie title Replacement Type
 | 005 | HERE WeGo | Google Maps | Offline maps, no account linkage | Still a 3rd-party map data source |
 | 006 | Immich | Google Photos | Local ML (face/object detection), no upload target | Needs real compute/storage; fast-moving project |
 | 007 | Synology Photos | Google Photos (alt.) | NAS-native integration, on-prem | Closed-source app layer |
-| 008 | **Bitwarden (self-hosted)** | Google Password Manager **+ Google Authenticator** | Zero-knowledge vault **and** built-in TOTP generator in one encrypted store — single root of trust instead of two | Storing TOTP seeds alongside passwords (mitigated by encryption + backup strategy) |
+| 008 | **Bitwarden (self-hosted)** | Google Password Manager **+ Google Authenticator** | Zero-knowledge vault **and** built-in TOTP generator in one encrypted store — single root of trust instead of two separate vendors | **Higher risk if the master vault is compromised** |
 | 009 | NewPipe | YouTube app | No embedded SDKs, no account binding | Depends on reverse-engineered API |
 | 010 | Traccar | Google Location History | Self-hosted, user-defined retention | Needs an always-reachable endpoint |
-| 011 | SMBSync3 | Google Drive Sync | LAN-scoped, no cloud intermediary | No off-network access without VPN |
+| 011 | SambaLite | Google Drive Sync | LAN-scoped, no cloud intermediary | No off-network access without VPN |
 | 012 | Jellyfin | YouTube Music | Open-source, no telemetry | Manual library curation |
 | 013 | Home Assistant | Google Home | Local automation execution | Some devices still need cloud round-trips |
-| 014 | **NetGuard** | **Implicit Android network permissions model** | **Per-app firewall, explicit LAN-only enforcement, blocks unauthorized external access** | **Requires active management; device-dependent** |
+| 014 | **NetGuard** | **Implicit Android network permissions model** | **Per-app firewall, explicit LAN-only enforcement, blocks unauthorized external access** | **Requires active management; default Android behavior is easier** |
 | 015 | Restic | — | Client-side encrypted, deduplicated, verifiable | CLI-driven; repo password loss = unrecoverable |
 | 016 | Duplicati | — (secondary to Restic) | Independent key material, GUI recovery path | Historically less stable; never the sole backup |
 | 017 | Cryptomator | Google Drive (sensitive files) | Encrypts before data reaches any sync/storage layer | Adds manual mount/unmount step |
@@ -185,7 +185,7 @@ pie title Replacement Type
 
 ## 6. Credential & 2FA Architecture (Bitwarden)
 
-**Merged design:** passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault** instead of two separate tools (password manager + Aegis). Bitwarden's built-in authenticator field stores the TOTP seed; a periodic encrypted vault export serves as the disaster-recovery copy.
+**Merged design:** passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault** instead of two separate tools (password manager + Aegis). Bitwarden's built-in authenticator field streamlines secure recovery and avoids drift between two independent secret stores.
 
 ```mermaid
 flowchart LR
@@ -208,7 +208,7 @@ flowchart LR
 - One recovery procedure covers both credentials and 2FA — no risk of restoring a password vault but losing the matching TOTP seed (or vice versa).
 - Self-hosting removes the account-bound cloud dependency of Google Password Manager and Google Authenticator alike.
 
-**Trade-off:** storing TOTP seeds in the same vault as the passwords they protect narrows the separation-of-secrets model — a full vault compromise now exposes both factors together. This is accepted because: (1) encryption is client-side, so the server never sees plaintext; (2) NetGuard enforces network boundaries, limiting lateral attack surface; (3) the backup chain is independent and encrypted.
+**Trade-off:** storing TOTP seeds in the same vault as the passwords they protect narrows the separation-of-secrets model — a full vault compromise now exposes both factors together. This is acceptable here because the vault is locally encrypted, self-hosted, and backed up with independent verification.
 
 ---
 
@@ -230,7 +230,7 @@ flowchart LR
     LocalStorage --> EncBackup[(Encrypted Backups)]
 ```
 
-Every arrow terminates in user-owned infrastructure or a client-side encrypted boundary — no primary path includes a third-party cloud hop. NetGuard sits at the device layer to enforce network isolation.
+Every arrow terminates in user-owned infrastructure or a client-side encrypted boundary — no primary path includes a third-party cloud hop. NetGuard sits at the device layer to enforce network isolation while the services themselves remain local-first and standards-based.
 
 ---
 
@@ -239,13 +239,13 @@ Every arrow terminates in user-owned infrastructure or a client-side encrypted b
 ```mermaid
 flowchart TB
     subgraph DeviceBackup["Device Backup"]
-        GOS2[GrapheneOS] --> BExport[Backup Export] --> Sync1[SMBSync3] --> Srv1[Local Server] --> R1[Restic]
+        GOS2[GrapheneOS] --> BExport[Backup Export] --> Sync1[SambaLite] --> Srv1[Local Server] --> R1[Restic]
     end
     subgraph TasksBackup["Tasks Backup"]
         Tasks[Tasks.org] --> TasksSync[CalDAV Sync] --> TasksServer[Tasks Backend] --> R3[Restic]
     end
     subgraph CredBackup["Credential + 2FA Backup"]
-        BW2[Bitwarden Vault] --> BWExport[Encrypted Export] --> Crypto[Cryptomator] --> Sync2[SMBSync3] --> R2[Restic]
+        BW2[Bitwarden Vault] --> BWExport[Encrypted Export] --> Crypto[Cryptomator] --> Sync2[SambaLite] --> R2[Restic]
     end
     subgraph ServiceBackup["Self-Hosted Service Backup"]
         Docker[Docker Services] --> Dup[Duplicati] --> Secondary[Secondary Target]
@@ -277,7 +277,7 @@ flowchart TB
 | NetGuard config loss | Device factory reset maintains baseline GrapheneOS privacy; re-apply NetGuard policy from backup |
 | **Vault (passwords + 2FA) loss** | Single recovery path: decrypt the latest Bitwarden encrypted export → restores both credentials and TOTP seeds together |
 
-**Why the merge simplifies recovery:** previously, losing 2FA access required a separate Aegis-export recovery procedure that could leave Bitwarden itself locked out. With TOTP inside Bitwarden, one restore covers both.
+**Why the merge simplifies recovery:** previously, losing 2FA access required a separate Aegis-export recovery procedure that could leave Bitwarden itself locked out. With TOTP inside Bitwarden, recovery is a single encrypted export restore.
 
 ---
 
