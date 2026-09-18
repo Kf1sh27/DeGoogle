@@ -23,19 +23,20 @@
 9. [Disaster Recovery](#9-disaster-recovery)
 10. [Threat Model](#10-threat-model)
 11. [Remaining Google Dependency](#11-remaining-google-dependency)
-12. [What's Possible Next](#12-whats-possible-next)
+12. [Security Exceptions](#12-security-exceptions)
+13. [What's Possible Next](#13-whats-possible-next)
 
 ---
 
 ## 1. Architecture Overview
 
-**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account dependency, no vendor lock-in, no cloud-only data retention.
+**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account dependency, no vendor lock-in, and no cloud-only data retention.
 
 Four layers:
 
 | Layer | What lives here |
 |---|---|
-| **Device** | GrapheneOS, sandboxed Google Play Services (compatibility only), local-first apps, NetGuard (network policy enforcement) |
+| **Device** | GrapheneOS, Vanadium, sandboxed Google Play Services (compatibility and banking exceptions only), local-first apps, and NetGuard (network policy enforcement) |
 | **Sync/Protocol** | CardDAV, CalDAV, SMB — open protocols, no vendor API in the path |
 | **Self-Hosted Services** | Homelab/NAS: Immich, Bitwarden, Traccar, Jellyfin, Home Assistant, Tasks.org backend |
 | **Backup/Resilience** | Restic + Duplicati, one copy always offline |
@@ -44,6 +45,7 @@ Four layers:
 flowchart TB
     subgraph Device["Device Layer — GrapheneOS"]
         GOS[GrapheneOS Hardened OS]
+        Vanadium[Vanadium Browser]
         SGP[Sandboxed Google Play Services]
         DAVx5[DAVx5 Sync Client]
         Fossify[Fossify Calendar / Recorder]
@@ -52,6 +54,7 @@ flowchart TB
         NewPipe[NewPipe]
         HERE[HERE WeGo]
         NetGuard[NetGuard<br/>Network Policy Enforcer]
+        BankApps[Banking / UPI Apps<br/>Official Google Play Store only]
     end
 
     subgraph Sync["Sync / Protocol Layer"]
@@ -77,18 +80,20 @@ flowchart TB
         Offsite[(Offline / Secondary Copy)]
     end
 
+    GOS --> Vanadium
     GOS --> DAVx5 --> CardDAV --> Homelab
     GOS --> Fossify --> CalDAV --> Homelab
     GOS --> TasksOrg --> TaskDAV --> TasksBackend
     GOS --> BWClient --> Bitwarden
     GOS --> SMB --> Homelab
     GOS --> NetGuard -.blocks external access.-> Homelab
+    GOS --> SGP --> BankApps
     Homelab --> Restic --> Offsite
     Homelab --> Duplicati --> Offsite
     CryptoVault --> Restic
 ```
 
-**How it works end to end:** a device app talks only to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service's data is pulled into a user-owned backup flow → no primary path depends on a Google account, API, or cloud storage bucket.
+**How it works end to end:** device apps use local-first storage or talk to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service's data is pulled into a user-owned backup flow. Vanadium is the default general-purpose browser, while banking and UPI applications are a narrowly scoped exception described in [Section 12](#12-security-exceptions).
 
 ---
 
@@ -97,6 +102,7 @@ flowchart TB
 | Google Service | Replacement | Self-Hosted | Local-First |
 |----------------|-------------|:---:|:---:|
 | Android | GrapheneOS | N/A | ✔ |
+| Browser | [Vanadium](https://github.com/GrapheneOS/Vanadium) | N/A | ✔ |
 | Contacts | DAVx5 + CardDAV | ✔ | ✔ |
 | Calendar | Fossify Calendar + CalDAV | ✔ | ✔ |
 | Tasks | **Tasks.org + CalDAV** | ✔ | ✔ |
@@ -110,10 +116,11 @@ flowchart TB
 | YouTube Music | Jellyfin / Poweramp | ✔ | ✔ |
 | Recorder | Fossify Voice Recorder | ✖ | ✔ |
 | Home | Home Assistant | ✔ | ✔ |
+| Banking / UPI payments | Official apps from sandboxed Google Play Store — security exception | ✖ | Partial |
 | Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ |
 | Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ |
 
-| **Only remaining Google footprint:** sandboxed Google Play Services, kept for app compatibility only (see [Section 11](#11-remaining-google-dependency)).
+**Only remaining Google footprint:** sandboxed Google Play Services and the Google Play Store, retained only for app compatibility and the banking/UPI security exception documented in [Section 12](#12-security-exceptions).
 
 ---
 
@@ -121,19 +128,20 @@ flowchart TB
 
 | Metric | Value |
 |---|---|
-| Services replaced | 16 / 16 |
+| Services replaced | 17 / 17 |
 | Fully self-hosted | 11 |
-| Client-only / local-first | 3 (Maps, YouTube, Voice Recorder) |
+| Client-only / local-first | 4 (Browser, Maps, YouTube, Voice Recorder) |
+| Security exceptions | 1 (banking / UPI apps from sandboxed Google Play Store) |
 | Network policy enforcement | 1 (NetGuard) |
-| Remaining Google dependency | 1 (sandboxed Play Services) |
+| Remaining Google dependency | Sandboxed Play Services + Play Store exception |
 | Account-level Google usage | 0% |
 
 ```mermaid
 pie title Replacement Type
     "Self-Hosted" : 11
-    "Local-First (Client-Only)" : 3
+    "Local-First (Client-Only)" : 4
     "Network Policy (Device)" : 1
-    "Partial (3rd-party data)" : 1
+    "Partial / Security Exception" : 1
 ```
 
 ---
@@ -153,9 +161,11 @@ pie title Replacement Type
 | Device Backup | GrapheneOS Export | Local storage | ✔ | SambaLite + Restic |
 | Sensitive Files | Cryptomator | Local NAS | ✔ (client-side) | Restic |
 | File Sync | SambaLite | LAN only | Transport-dependent | N/A |
+| Browser Data | Vanadium | Device / user-controlled export | Device-level | GrapheneOS Export + SambaLite |
+| Banking / UPI Data | Official apps from sandboxed Google Play Store | Device / provider systems | App- and provider-dependent | Provider-controlled; do not back up secrets insecurely |
 | Network Policy | NetGuard rules | Device | N/A (per-app firewall) | Device config export |
 
-**Why this works:** encryption happens as close to the data's origin as possible (client-side for Bitwarden and Cryptomator), so plaintext crosses the fewest possible trust boundaries. Network policy is enforced at the device layer to keep traffic local, and backups are kept independent from the live service path.
+**Why this works:** encryption happens as close to the data's origin as possible (client-side for Bitwarden and Cryptomator), so plaintext crosses the fewest possible trust boundaries. Network policy is enforced at the device layer to keep traffic local. Banking and UPI applications are deliberately excluded from the self-hosted data path because their integrity and official distribution are higher priorities than eliminating this narrow Google dependency.
 
 ---
 
@@ -168,18 +178,20 @@ pie title Replacement Type
 | 003 | Fossify Calendar | Google Calendar app | No bundled analytics, local rendering | Fewer "smart" scheduling features |
 | 004 | **Tasks.org + CalDAV** | **Google Tasks** | **Open protocol task sync, self-hosted backend, no proprietary lock-in** | **Requires CalDAV-compatible task server** |
 | 005 | HERE WeGo | Google Maps | Offline maps, no account linkage | Still a 3rd-party map data source |
-| 006 | Immich | Google Photos | Local ML (face/object detection), no upload target | Needs real compute/storage; fast-moving project |
+| 006 | Immich | Google Photos | Local ML, no upload target | Needs real compute/storage; fast-moving project |
 | 007 | Synology Photos | Google Photos (alt.) | NAS-native integration, on-prem | Closed-source app layer |
-| 008 | **Bitwarden (self-hosted)** | Google Password Manager **+ Google Authenticator** | Zero-knowledge vault **and** built-in TOTP generator in one encrypted store — single root of trust instead of two separate vendors | **Higher risk if the master vault is compromised** |
+| 008 | **Bitwarden (self-hosted)** | Google Password Manager **+ Google Authenticator** | Zero-knowledge vault and built-in TOTP generator in one encrypted store | Higher risk if the master vault is compromised |
 | 009 | NewPipe | YouTube app | No embedded SDKs, no account binding | Depends on reverse-engineered API |
 | 010 | Traccar | Google Location History | Self-hosted, user-defined retention | Needs an always-reachable endpoint |
 | 011 | SambaLite | Google Drive Sync | LAN-scoped, no cloud intermediary | No off-network access without VPN |
 | 012 | Jellyfin | YouTube Music | Open-source, no telemetry | Manual library curation |
 | 013 | Home Assistant | Google Home | Local automation execution | Some devices still need cloud round-trips |
-| 014 | **NetGuard** | **Implicit Android network permissions model** | **Per-app firewall, explicit LAN-only enforcement, blocks unauthorized external access** | **Requires active management; default Android behavior is easier** |
+| 014 | **NetGuard** | **Implicit Android network permissions model** | **Per-app firewall and explicit LAN-only enforcement** | Requires active management |
 | 015 | Restic | — | Client-side encrypted, deduplicated, verifiable | CLI-driven; repo password loss = unrecoverable |
 | 016 | Duplicati | — (secondary to Restic) | Independent key material, GUI recovery path | Historically less stable; never the sole backup |
 | 017 | Cryptomator | Google Drive (sensitive files) | Encrypts before data reaches any sync/storage layer | Adds manual mount/unmount step |
+| 018 | **Vanadium** | Default OS browser / Chromium-based browser alternatives | GrapheneOS-integrated, privacy-focused browsing with no Google account requirement | Not a complete substitute for every browser-specific web compatibility case |
+| 019 | **Official banking and UPI apps from sandboxed Google Play Store** | Untrusted APK mirrors or sideloaded financial apps | Official distribution helps verify publisher, package, and update provenance; minimizes tampering risk | Retains a tightly scoped Google Play dependency and third-party app/cloud exposure |
 
 ---
 
@@ -199,16 +211,11 @@ flowchart LR
 ```
 
 **How it works:**
-- Client-side encryption/decryption — the server only ever stores encrypted blobs and never sees a master password or plaintext vault contents.
-- One unlock (master password + optional biometric/device unlock) grants both the stored password *and* its live TOTP code — no second app, no second vault to keep in sync.
-- A periodic **encrypted emergency export** is the disaster-recovery copy: it flows through Cryptomator → Restic → an offline/secondary target, independent of the live server.
+- Client-side encryption/decryption means the server only ever stores encrypted blobs and never sees a master password or plaintext vault contents.
+- One unlock grants both the stored password and its live TOTP code — no second app or second vault to keep in sync.
+- A periodic **encrypted emergency export** flows through Cryptomator → Restic → an offline/secondary target.
 
-**What this makes possible:**
-- One root of trust to protect and back up instead of two (previously: Bitwarden vault + separate Aegis database).
-- One recovery procedure covers both credentials and 2FA — no risk of restoring a password vault but losing the matching TOTP seed (or vice versa).
-- Self-hosting removes the account-bound cloud dependency of Google Password Manager and Google Authenticator alike.
-
-**Trade-off:** storing TOTP seeds in the same vault as the passwords they protect narrows the separation-of-secrets model — a full vault compromise now exposes both factors together. This is acceptable here because the vault is locally encrypted, self-hosted, and backed up with independent verification.
+**Trade-off:** storing TOTP seeds with passwords narrows the separation-of-secrets model — a full vault compromise exposes both factors together. This is accepted because the vault is locally encrypted, self-hosted, and backed up with independent verification.
 
 ---
 
@@ -216,9 +223,10 @@ flowchart LR
 
 | Tier | Assets | Why |
 |---|---|---|
-| **Tier-0** | Bitwarden vault (passwords + TOTP), encryption keys, Cryptomator recovery material, NetGuard policy config | Non-regenerable and gating — losing them can lock out every other service |
+| **Tier-0** | Bitwarden vault, encryption keys, Cryptomator recovery material, NetGuard policy config | Non-regenerable and gating — losing them can lock out every other service |
 | **Tier-1** | Contacts, calendars, tasks, Home Assistant data, Traccar data | Important, but recreatable/re-syncable |
 | **Tier-2** | Photos, videos, music, voice recordings | Recoverable from other copies/devices |
+| **Tier-3** | Banking and UPI applications | Financially sensitive; use only official distributions and protect device/app authentication |
 
 ```mermaid
 flowchart LR
@@ -228,9 +236,11 @@ flowchart LR
     LocalApps --> SelfHosted[Self-Hosted Services]
     SelfHosted --> LocalStorage[(Local Storage / NAS)]
     LocalStorage --> EncBackup[(Encrypted Backups)]
+    GOS --> OfficialApps[Official Banking / UPI Apps]
+    OfficialApps --> BankProviders[Financial Service Providers]
 ```
 
-Every arrow terminates in user-owned infrastructure or a client-side encrypted boundary — no primary path includes a third-party cloud hop. NetGuard sits at the device layer to enforce network isolation while the services themselves remain local-first and standards-based.
+Every primary self-hosted arrow terminates in user-owned infrastructure or a client-side encrypted boundary. Banking and UPI apps are the explicit exception: they communicate with their financial providers and must be obtained from the official sandboxed Google Play Store distribution channel.
 
 ---
 
@@ -262,6 +272,7 @@ flowchart TB
 | Offline copy | At least one backup copy is not continuously network-reachable |
 | Verified, not assumed | Restic `check` + periodic test-restore confirm the chain is actually usable |
 | Network-isolated services | NetGuard enforces that backup traffic stays LAN-bound; no external leakage |
+| Financial app secrets | Do not export or back up banking credentials, PINs, or payment secrets through ordinary sync jobs; use the provider's recovery process |
 
 ---
 
@@ -275,9 +286,8 @@ flowchart TB
 | Docker/service failure | Recreate container from config, restore data from Duplicati/Restic |
 | Backup corruption | Redundant tools + periodic verification catch this before it's needed |
 | NetGuard config loss | Device factory reset maintains baseline GrapheneOS privacy; re-apply NetGuard policy from backup |
-| **Vault (passwords + 2FA) loss** | Single recovery path: decrypt the latest Bitwarden encrypted export → restores both credentials and TOTP seeds together |
-
-**Why the merge simplifies recovery:** previously, losing 2FA access required a separate Aegis-export recovery procedure that could leave Bitwarden itself locked out. With TOTP inside Bitwarden, recovery is a single encrypted export restore.
+| **Vault (passwords + 2FA) loss** | Decrypt the latest Bitwarden encrypted export to restore credentials and TOTP seeds together |
+| Banking / UPI app loss | Reinstall the official app from the sandboxed Google Play Store and complete the provider's identity/device recovery process; do not use APK mirrors |
 
 ---
 
@@ -290,9 +300,11 @@ flowchart TB
 | Cloud account compromise | One account exposes contacts, photos, location, credentials | Compromise is contained per self-hosted service |
 | Vendor lock-in | Proprietary formats/APIs | Open protocols (CalDAV/CardDAV/restic) preserve portability |
 | Excessive permissions | Broad bundled-app permissions | GrapheneOS per-app network/permission scoping + **NetGuard per-app firewall** |
-| Unauthorized network access | Apps making unexpected external connections | **NetGuard blocks all outbound except to approved LAN addresses** |
+| Unauthorized network access | Apps making unexpected external connections | **NetGuard blocks all outbound except to approved LAN addresses** where practical |
 | Service-to-internet leakage | Internal services accidentally reaching out | **NetGuard LAN-only policy prevents cross-boundary data flow** |
-| Vault/2FA loss | Account-recovery flow controlled by vendor | Encrypted export chain (Section 8) with periodic restore testing |
+| Malicious or tampered financial APK | Sideloaded APK may be modified or have an untrusted provenance | Banking and UPI apps are installed only from their official Google Play Store listings in the sandboxed profile |
+| Browser tracking | Default or account-bound browser may send telemetry or encourage cloud sync | Vanadium is the default browser; no Google account is required |
+| Vault/2FA loss | Account-recovery flow controlled by vendor | Encrypted export chain with periodic restore testing |
 | Service outage | Vendor-wide outage disables multiple services | Self-hosted services fail independently |
 
 ```mermaid
@@ -314,18 +326,48 @@ flowchart LR
 
 ## 11. Remaining Google Dependency
 
-**Sandboxed Google Play Services** — the only Google component still present, kept for apps requiring push notification delivery or SDKs with no open-source equivalent.
+**Sandboxed Google Play Services** and the **sandboxed Google Play Store** are retained as narrowly scoped exceptions:
+
+- Play Services remains available for apps requiring push notification delivery, Google APIs, or SDKs with no open-source equivalent.
+- The Play Store is used specifically to install banking and UPI payment apps from their official listings rather than relying on APK mirrors or unknown sideload sources.
+- These components are ordinary sandboxed apps on GrapheneOS, not privileged system services. Keep them in a separate profile where practical, restrict network access with NetGuard when it does not break required functionality, and avoid signing into a Google account unless an app genuinely requires it.
 
 | Property | Detail |
 |---|---|
-| Privilege level | Ordinary unprivileged app, not a system service |
-| Isolation | Scoped per profile, network access toggled per app, **further restricted by NetGuard** |
-| Residual risk | Closed-source, cannot be fully audited — treated as a contained, monitored exception |
-| Network enforcement | NetGuard can disable Play Services internet access entirely if unused |
+| Privilege level | Ordinary unprivileged apps, not system services |
+| Isolation | Scoped per profile, network access toggled per app, further restricted by NetGuard |
+| Residual risk | Closed-source components and provider-dependent financial apps remain a contained, monitored exception |
+| Network enforcement | NetGuard can disable Play Services internet access when unused; banking/UPI apps require their provider connectivity |
+| Distribution integrity | Banking and UPI apps are installed only from official Google Play Store listings; verify the developer/publisher and package before installation |
 
 ---
 
-## 12. What's Possible Next
+## 12. Security Exceptions
+
+### Banking and UPI payment applications
+
+Banking and UPI payment applications are an explicit, limited exception to the otherwise de-Googled application strategy. They should be downloaded from the **official Google Play Store running as a sandboxed GrapheneOS app**, not from APK mirrors, unofficial repositories, or random direct-download links.
+
+This is intentional for application integrity and provenance: the official store listing provides a known publisher/package relationship and a signed update distribution path, helping reduce the risk that a financial application has been modified or tampered with before installation. Users should still verify the developer name, package identity, requested permissions, and update behavior; official distribution is a risk reduction, not a guarantee that the banking provider itself is trustworthy.
+
+Recommended controls:
+
+- Install only the bank or UPI provider's official listing from the sandboxed Play Store.
+- Keep banking and payment apps in a separate user profile where practical.
+- Do not install financial APKs from mirrors or accept APKs sent through messages or email.
+- Grant only the permissions required for the app to function, and use NetGuard to restrict unrelated network access where possible.
+- Use device unlock, app-level security features, transaction notifications, and provider-supported recovery controls.
+- Never include banking passwords, PINs, OTPs, tokens, or payment secrets in SambaLite, Restic, Duplicati, or ordinary device exports.
+
+### Vanadium as the default browser
+
+[Vanadium](https://github.com/GrapheneOS/Vanadium) replaces the browser application supplied by the default OS/browser setup. It is the general-purpose browser for this architecture and does not require a Google account. Browser data should remain local to the device or be included only in an encrypted, user-controlled device backup.
+
+Vanadium does not replace the banking/UPI distribution requirement: financial apps remain native applications installed from the sandboxed official Play Store, while Vanadium is used for ordinary web browsing and provider web portals where appropriate.
+
+---
+
+## 13. What's Possible Next
 
 | Idea | What it would replace | Enables |
 |---|---|---|
