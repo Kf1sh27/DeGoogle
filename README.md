@@ -20,26 +20,27 @@
 6. [Architecture Decision Records](#6-architecture-decision-records)
 7. [Credential & 2FA Architecture](#7-credential--2fa-architecture)
 8. [Data Criticality Tiers & Flow](#8-data-criticality-tiers--flow)
-9. [Backup Architecture](#9-backup-architecture)
-10. [Disaster Recovery](#10-disaster-recovery)
-11. [Threat Model](#11-threat-model)
-12. [Remaining Google Dependency](#12-remaining-google-dependency)
-13. [Security Exceptions](#13-security-exceptions)
-14. [What's Possible Next](#14-whats-possible-next)
+9. [Internet Access to Hosted Applications](#9-internet-access-to-hosted-applications)
+10. [Backup Architecture](#10-backup-architecture)
+11. [Disaster Recovery](#11-disaster-recovery)
+12. [Threat Model](#12-threat-model)
+13. [Remaining Google Dependency](#13-remaining-google-dependency)
+14. [Security Exceptions](#14-security-exceptions)
+15. [What's Possible Next](#15-whats-possible-next)
 
 ---
 
 ## 1. Architecture Overview
 
-**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account dependence for primary data flow.
+**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account dependency.
 
 Four layers:
 
 | Layer | What lives here |
 |---|---|
-| **Device** | GrapheneOS, Vanadium, sandboxed Google Play Services (compatibility and banking exceptions only), local-first apps, and NetGuard |
+| **Device** | GrapheneOS, Vanadium, sandboxed Google Play Services (compatibility and banking exceptions only), local-first apps, Traccar Client, and NetGuard |
 | **Sync/Protocol** | CardDAV, CalDAV, SMB — open protocols, no vendor API in the path |
-| **Self-Hosted Services** | Homelab/NAS: Immich, Bitwarden, Traccar, Jellyfin, Home Assistant, Tasks.org backend |
+| **Self-Hosted Services** | Homelab/NAS: Immich, Bitwarden, Traccar Server, Jellyfin, Home Assistant, Tasks.org backend |
 | **Backup/Resilience** | Restic + Duplicati, one copy always offline |
 
 ```mermaid
@@ -52,6 +53,7 @@ flowchart TB
         Fossify[Fossify Calendar / Recorder]
         BWClient[Bitwarden Client<br/>Passwords + 2FA/TOTP]
         TasksOrg[Tasks.org Client<br/>Task Management]
+        TraccarClient[Traccar Client<br/>Location Reporting]
         NewPipe[NewPipe]
         HERE[HERE WeGo]
         NetGuard[NetGuard<br/>Network Policy Enforcer]
@@ -81,16 +83,17 @@ flowchart TB
     GOS --> DAVx5 --> CardDAV --> Homelab
     GOS --> Fossify --> CalDAV --> Homelab
     GOS --> TasksOrg --> TaskDAV --> TasksBackend
+    GOS --> TraccarClient --> Traccar
     GOS --> BWClient --> Bitwarden
     GOS --> SMB --> Homelab
-    GOS --> NetGuard -.blocks external access.-> Homelab
+    GOS --> NetGuard -.blocks unapproved access.-> Homelab
     GOS --> SGP --> BankApps
     Homelab --> Restic --> Offsite
     Homelab --> Duplicati --> Offsite
     DroidFSVault --> Restic
 ```
 
-**How it works end to end:** device apps use local-first storage or talk to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service's data is independently backed up and recoverable.
+**How it works end to end:** device apps use local-first storage or talk to a self-hosted endpoint over a standard protocol → the self-hosted service is the single source of truth → every service is included in encrypted, independently verifiable backups.
 
 ---
 
@@ -102,29 +105,29 @@ GrapheneOS is a security and privacy-focused mobile operating system based on th
 
 - **Duress PIN / Password (Destructive PIN):** An alternate lock-screen PIN or password can trigger an irreversible wipe of the entire device, including eSIMs, at the OS level.
 - **PIN Scrambling Layout:** Randomizes the number keypad placement on every unlock to reduce shoulder-surfing and fingerprint-smudge analysis.
-- **USB-C Data Restrictions:** Blocks USB-C data connections while locked at the hardware and OS-driver levels. Charging-only or complete USB disablement can be configured.
-- **Auto-Reboot Timer:** Automatically restarts the device after a configured period of inactivity (18 hours by default), moving it from After First Unlock (AFU) to Before First Unlock (BFU) and re-enabling stronger protections.
-- **Two-Factor Fingerprint Unlock:** An optional second-factor short PIN can be required alongside biometrics. The maximum biometric attempts are reduced from AOSP's 20 to 5 to resist hardware brute-force attacks.
-- **128-Character Passwords:** Supports passwords up to 128 characters rather than AOSP's standard 16-character alphanumeric limit, enabling high-entropy passphrases.
+- **USB-C Data Restrictions:** Blocks USB-C data connections while locked at the hardware and OS-driver levels.
+- **Auto-Reboot Timer:** Automatically restarts the device after inactivity, moving it from After First Unlock (AFU) to Before First Unlock (BFU).
+- **Two-Factor Fingerprint Unlock:** An optional second-factor short PIN can be required alongside biometrics.
+- **128-Character Passwords:** Supports high-entropy passphrases longer than standard Android limits.
 
 ### Exploit Mitigation & Memory Hardening
 
-- **Hardened Malloc & MTE:** Uses `hardened_malloc` to mitigate memory-corruption vulnerabilities such as use-after-free and buffer overflows, with strict ARM Memory Tagging Extension (MTE) rules on compatible devices.
-- **Secure App Spawning:** Allows disabling the standard Android Zygote process model so random memory secrets, including ASLR layout hashes, are not universally shared between app processes.
-- **Kernel & Browser Hardening:** Includes Vanadium, a hardened Chromium-based browser with JavaScript JIT disabled by default, type-based Control Flow Integrity, and hybrid post-quantum encryption.
+- **Hardened Malloc & MTE:** Mitigates memory-corruption vulnerabilities such as use-after-free and buffer overflows.
+- **Secure App Spawning:** Can disable the standard Android Zygote process model to reduce cross-process secret sharing.
+- **Kernel & Browser Hardening:** Includes Vanadium, a hardened Chromium-based browser with JavaScript JIT disabled by default and control-flow protections.
 
 ### Network & Privacy Granularity
 
-- **Network & Sensors Toggles:** Explicit system-level toggles can remove an application's internet or hardware-sensor access independently of ordinary Android permissions.
-- **Storage and Contact Scopes:** Scopes replace blanket permissions, exposing only selected files, folders, or contact entries to an application.
-- **LTE-Only Mode:** Reduces cellular-modem attack surface by disabling vulnerable legacy infrastructure such as 2G and 3G and ignoring unencrypted 5G configurations to help defend against IMSI catchers.
-- **Advanced Wi-Fi Anonymization:** Scrambles probe sequence numbers alongside MAC randomization to reduce tracking through local-network probes.
+- **Network and Sensors Toggles:** Removes an application's internet or hardware-sensor access independently of ordinary permissions.
+- **Storage and Contact Scopes:** Exposes only selected files, folders, or contact entries to an application.
+- **LTE-Only Mode:** Reduces cellular-modem attack surface by disabling vulnerable legacy infrastructure.
+- **Advanced Wi-Fi Anonymization:** Scrambles probe sequence numbers alongside MAC randomization.
 
 ### Hardware Attestation
 
-- **Auditor App:** Uses hardware-backed verification and a secondary device to scan a cryptographic QR code. This verifies that the phone's firmware, secure element, and operating system have not been tampered with.
+- **Auditor App:** Uses hardware-backed verification and a secondary device to verify firmware, secure element, and operating-system integrity.
 
-These controls are complementary: a strong passphrase and reboot policy protect data at rest, exploit mitigations reduce the impact of application and kernel vulnerabilities, scopes and toggles limit data exposure, and hardware attestation provides a measurable baseline for trust.
+These controls are complementary: a strong passphrase and reboot policy protect data at rest, exploit mitigations reduce the impact of vulnerabilities, and scopes and toggles limit application access.
 
 ---
 
@@ -141,7 +144,7 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | Photos | Immich / Synology Photos | ✔ | ✔ |
 | Password Manager + Authenticator | **Bitwarden (self-hosted)** — vault + built-in TOTP | ✔ | ✔ |
 | YouTube | NewPipe | ✖ | N/A |
-| Location History | Traccar | ✔ | ✔ |
+| Location History | **Traccar Client + Traccar Server** | ✔ | ✔ |
 | Drive Sync | SambaLite | ✔ | ✔ |
 | Drive (sensitive files) | DroidFS | Optional | ✔ |
 | YouTube Music | Jellyfin / Poweramp | ✔ | ✔ |
@@ -151,7 +154,7 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ |
 | Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ |
 
-**Only remaining Google footprint:** sandboxed Google Play Services and the Google Play Store, retained only for app compatibility and the banking/UPI security exception documented in [Section 13](#13-security-exceptions).
+**Only remaining Google footprint:** sandboxed Google Play Services and the Google Play Store, retained only for app compatibility and the banking/UPI security exception documented in [Section 14](#14-security-exceptions).
 
 ---
 
@@ -177,15 +180,15 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | Tasks | **Tasks.org + CalDAV** | Local server | ✔ | Restic + Duplicati |
 | Photos / Videos | Immich / Synology Photos | Local NAS | ✔ | Restic + Duplicati |
 | Passwords + 2FA/TOTP | **Bitwarden (self-hosted)** | Local server | ✔ (zero-knowledge) | Restic + Duplicati + encrypted vault export |
-| Location History | Traccar | Local server | ✔ | Restic |
+| Location History | **Traccar Client + Traccar Server** | Device + local server | ✔ | Restic |
 | Music / Video Library | Jellyfin / Poweramp | Local NAS | Optional | Restic |
 | Voice Recordings | Fossify Voice Recorder | Device | Device-level | SambaLite + Restic |
 | Device Backup | GrapheneOS Export | Local storage | ✔ | SambaLite + Restic |
 | Sensitive Files | DroidFS | Local NAS | ✔ (client-side) | Restic |
 | File Sync | SambaLite | LAN only | Transport-dependent | N/A |
 | Browser Data | Vanadium | Device / user-controlled export | Device-level | GrapheneOS Export + SambaLite |
-| Banking / UPI Data | Official apps from sandboxed Google Play Store | Device / provider systems | App- and provider-dependent | Provider-controlled; never sync secrets insecurely |
-| Network Policy | NetGuard rules | Device | N/A (per-app firewall) | Device config export |
+| Banking / UPI Data | Official apps from sandboxed Google Play Store | Device / provider systems | App- and provider-dependent | Provider-controlled |
+| Network Policy | NetGuard rules | Device | N/A | Device config export |
 
 ---
 
@@ -199,16 +202,16 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | 004 | **Tasks.org + CalDAV** | Google Tasks | Open protocol task sync and self-hosted backend | Requires compatible task server |
 | 005 | HERE WeGo | Google Maps | Offline maps, no account linkage | Third-party map data source |
 | 006 | Immich | Google Photos | Local ML and no upload target | Requires compute and storage |
-| 007 | **Vanadium** | Default browser | GrapheneOS-integrated hardened browser with privacy controls and no Google account requirement | Some web compatibility trade-offs |
+| 007 | **Vanadium** | Default browser | Hardened browser with privacy controls and no Google account requirement | Some web compatibility trade-offs |
 | 008 | **Bitwarden (self-hosted)** | Google Password Manager + Authenticator | Zero-knowledge vault and built-in TOTP | Vault compromise exposes both factors |
 | 009 | NewPipe | YouTube app | No embedded SDKs or account binding | Reverse-engineered API dependency |
-| 010 | Traccar | Google Location History | Self-hosted and user-defined retention | Needs reachable endpoint |
+| 010 | **Traccar Client + Server** | Google Location History | Phone reports location directly to a self-hosted server with user-defined retention | Needs reachable endpoint and client battery |
 | 011 | SambaLite | Google Drive Sync | LAN-scoped, no cloud intermediary | No off-network access without VPN |
 | 012 | Jellyfin | YouTube Music | Open-source and no telemetry | Manual library curation |
 | 013 | Home Assistant | Google Home | Local automation execution | Some devices need cloud round-trips |
 | 014 | **NetGuard** | Android network permissions model | Per-app firewall and explicit LAN-only enforcement | Requires active management |
 | 015 | Restic | — | Encrypted, deduplicated, verifiable backups | CLI-driven; lost password is unrecoverable |
-| 016 | Duplicati | — | Independent key material and GUI recovery path | Never the sole backup |
+| 016 | Duplicati | — | Independent backup path and GUI recovery | Never the sole backup |
 | 017 | DroidFS | Google Drive sensitive files | Client-side encryption before sync/storage | Manual mount/unmount step |
 | 018 | Official banking and UPI apps | Untrusted APK mirrors | Known publisher and signed official-store update path | Retains narrowly scoped Google dependency |
 
@@ -216,11 +219,11 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 
 ## 7. Credential & 2FA Architecture
 
-Passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault**. Client-side encryption means the server stores encrypted blobs and never sees the master password or plaintext vault. An encrypted backup export can be stored on a local NAS or external drive, and critical recovery material lives in the highest-tier security bucket.
+Passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault**. Client-side encryption means the server stores encrypted blobs and never sees the master password or plaintext vault.
 
-**DroidFS note:** use DroidFS for encrypted sensitive-file storage in the local-first design. If you specifically need the paid version, use Cryptomator as the exception.
+**DroidFS note:** use DroidFS for encrypted sensitive-file storage in the local-first design. If a paid solution is specifically required, use Cryptomator as the exception.
 
-**Trade-off:** storing TOTP seeds with passwords reduces separation of secrets; a full vault compromise exposes both factors. This is accepted because the vault is locally encrypted, self-hosted, and backed up independently.
+**Trade-off:** storing TOTP seeds with passwords reduces separation of secrets; a full vault compromise exposes both factors. This is accepted because the vault is locally encrypted, self-hosted, and backed up through an encrypted export chain.
 
 ---
 
@@ -229,23 +232,54 @@ Passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault**. Clie
 | Tier | Assets | Why |
 |---|---|---|
 | **Tier-0** | Bitwarden vault, encryption keys, DroidFS recovery material, NetGuard policy config | Non-regenerable and gating |
-| **Tier-1** | Contacts, calendars, tasks, Home Assistant and Traccar data | Important but recreatable or re-syncable |
+| **Tier-1** | Contacts, calendars, tasks, Home Assistant, and Traccar data | Important but recreatable or re-syncable |
 | **Tier-2** | Photos, videos, music, voice recordings | Recoverable from other copies |
 | **Tier-3** | Banking and UPI applications | Financially sensitive; use only official distributions |
 
 ---
 
-## 9. Backup Architecture
+## 9. Internet Access to Hosted Applications
+
+When the phone is away from the home network, hosted applications can be reached through a **Cloudflare Tunnel** and a reverse proxy rather than exposing the homelab's router ports directly.
+
+```mermaid
+flowchart LR
+    Phone[Phone / Traccar Client / Browser] -->|HTTPS| CF[Cloudflare Edge]
+    CF --> Tunnel[cloudflared<br/>Outbound Tunnel]
+    Tunnel --> Proxy[Reverse Proxy / Access Policy]
+    Proxy --> Apps[Selected Hosted Applications]
+```
+
+The `cloudflared` connector runs inside the homelab and establishes an outbound, encrypted connection to Cloudflare. Public DNS names route to the tunnel; no inbound port-forwarding or directly exposed home IP address is required. The reverse proxy then routes each hostname to only the intended internal service, such as Traccar Server, Immich, or Bitwarden.
+
+### Security and privacy considerations
+
+- **Reduce network exposure:** The home router can keep inbound ports closed, reducing scanning and direct attack surface. This does not make the applications safe by itself; each exposed application still needs hardening and timely updates.
+- **Encrypt in transit:** Use HTTPS at the Cloudflare edge and validate the tunnel-to-origin path. Do not treat the tunnel as a replacement for application-layer authentication.
+- **Authenticate before forwarding:** Use Cloudflare Access, service-specific authentication, or both for administrative applications. Prefer identity-aware policies, MFA, short sessions, and device/client restrictions where supported.
+- **Expose the minimum:** Publish separate hostnames only for services that genuinely need internet access. Keep SMB, databases, Docker APIs, backup repositories, and management interfaces LAN-only or reachable through a private VPN instead.
+- **Protect secrets:** Cloudflare can observe metadata and, depending on the configuration and termination point, plaintext application traffic. Do not expose unencrypted services or assume the tunnel provides end-to-end privacy from the tunnel provider. Use zero-knowledge application encryption where available and keep sensitive administration behind a VPN.
+- **Limit service permissions:** Run `cloudflared` with least privilege, isolate it from unrelated containers, restrict origin firewall rules, and prevent the reverse proxy from becoming a general-purpose path into the LAN.
+- **Monitor and recover:** Review Cloudflare and reverse-proxy access logs, alert on unusual locations or request rates, rate-limit public endpoints, and have a plan to revoke tunnel credentials. Back up tunnel configuration and recovery material without placing them in ordinary public web storage.
+- **Client-side controls still apply:** On GrapheneOS, use separate user profiles where appropriate and use NetGuard to restrict which apps may reach the public hostname. For Traccar, the **Traccar Client** should be configured to send only to the required Traccar endpoint, with the minimum location permissions and reporting frequency needed.
+
+Cloudflare Tunnel improves reachability and removes inbound port-forwarding; it does not eliminate trust in Cloudflare, protect a vulnerable application, or replace strong authentication, patching, segmentation, backups, and monitoring. For the most sensitive services, a private VPN or a zero-trust access layer with no public application exposure remains preferable.
+
+---
+
+## 10. Backup Architecture
 
 ```mermaid
 flowchart TB
     GOS2[GrapheneOS] --> BExport[Backup Export] --> Sync1[SambaLite] --> Srv1[Local Server] --> R1[Restic]
     Tasks[Tasks.org] --> TasksSync[CalDAV Sync] --> TasksServer[Tasks Backend] --> R3[Restic]
+    TraccarClient[Traccar Client] --> TraccarServer[Traccar Server] --> R4[Restic]
     BW2[Bitwarden Vault] --> BWExport[Encrypted Export] --> Crypto[DroidFS] --> Sync2[SambaLite] --> R2[Restic]
     Docker[Docker Services] --> Dup[Duplicati] --> Secondary[Secondary Target]
     R1 --> Secondary
     R2 --> Secondary
     R3 --> Secondary
+    R4 --> Secondary
 ```
 
 - Vault exports and DroidFS data are encrypted before sync/storage.
@@ -256,19 +290,20 @@ flowchart TB
 
 ---
 
-## 10. Disaster Recovery
+## 11. Disaster Recovery
 
 | Scenario | Recovery path |
 |---|---|
-| Device loss/failure | Restore GrapheneOS backup export and Bitwarden vault sync/export |
+| Device loss/failure | Restore GrapheneOS backup export and Bitwarden vault sync/export; reinstall and reconfigure Traccar Client |
 | NAS failure | Restore services and media from Restic/Duplicati secondary repositories |
 | Backup corruption | Use redundant tools and periodic verification |
 | NetGuard config loss | Re-apply policy from device configuration backup |
+| Cloudflare Tunnel compromise | Revoke tunnel credentials, recreate the connector, rotate Access credentials, and review origin logs |
 | Banking / UPI app loss | Reinstall the official app from sandboxed Google Play Store and complete provider recovery; never use APK mirrors |
 
 ---
 
-## 11. Threat Model
+## 12. Threat Model
 
 | Threat | Mitigation |
 |---|---|
@@ -277,6 +312,8 @@ flowchart TB
 | Vendor lock-in | CalDAV, CardDAV, SMB, and restic preserve portability |
 | Excessive permissions | GrapheneOS scopes, toggles, and NetGuard per-app firewall |
 | Unauthorized network access | NetGuard blocks outbound traffic except approved destinations where practical |
+| Public service exploitation | Cloudflare Tunnel, closed inbound ports, reverse-proxy allowlists, MFA, patching, and service isolation |
+| Cloudflare or tunnel credential compromise | Least privilege, MFA, credential rotation, origin restrictions, logs, and rapid tunnel revocation |
 | Malicious or tampered financial APK | Install banking and UPI apps only from official Google Play Store listings in the sandboxed profile |
 | Browser tracking | Vanadium is the default browser and requires no Google account |
 | Device compromise | GrapheneOS exploit mitigations, hardened malloc, MTE, secure app spawning, and Auditor attestation |
@@ -284,23 +321,19 @@ flowchart TB
 
 ---
 
-## 12. Remaining Google Dependency
+## 13. Remaining Google Dependency
 
-Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. The Play Store is used for app compatibility and official banking/UPI distribution where necessary.
-
-These are ordinary sandboxed apps, not privileged system services. Keep them in a separate profile where practical, restrict network access with NetGuard when it does not break required functionality, and avoid expanding the trust boundary beyond the minimum necessary.
+Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. These are ordinary sandboxed apps, not privileged system services. Keep them in a separate profile where practical and restrict network access with NetGuard when it does not break required functionality.
 
 ---
 
-## 13. Security Exceptions
+## 14. Security Exceptions
 
 ### Banking and UPI payment applications
 
-Banking and UPI applications must be downloaded from the **official Google Play Store running as a sandboxed GrapheneOS app**, not from APK mirrors, unofficial repositories, or random direct-download links.
+Banking and UPI applications must be downloaded from the **official Google Play Store running as a sandboxed GrapheneOS app**, not from APK mirrors, unofficial repositories, or random direct-download sites.
 
-Users should still verify the developer name, package identity, permissions, and update behavior. Official distribution reduces provenance risk; it does not make the banking provider or application reliable or risk-free.
-
-Recommended controls:
+Users should verify the developer name, package identity, permissions, and update behavior. Recommended controls:
 
 - Install only the bank or UPI provider's official listing from the sandboxed Play Store.
 - Keep banking and payment apps in a separate user profile where practical.
@@ -311,17 +344,15 @@ Recommended controls:
 
 ### Vanadium as the default browser
 
-[Vanadium](https://github.com/GrapheneOS/Vanadium) replaces the default browser application. It is the general-purpose browser for this architecture, with GrapheneOS hardening, JavaScript JIT disabled, and no Google account requirement.
-
-Vanadium does not replace the banking/UPI distribution requirement: financial apps remain native applications installed from the official sandboxed Play Store, while Vanadium is used for ordinary web browsing.
+[Vanadium](https://github.com/GrapheneOS/Vanadium) replaces the default browser application. It is the general-purpose browser for this architecture, with GrapheneOS hardening, JavaScript JIT disabled by default, and no Google account requirement. Financial apps remain native applications installed from the official sandboxed Play Store.
 
 ### Hardware and physical-access baseline
 
-Use a long passphrase, enable the auto-reboot timer, keep USB-C data restricted while locked, configure the duress PIN only after understanding its irreversible wipe behavior, and periodically use Auditor attestation to verify the device integrity baseline.
+Use a long passphrase, enable the auto-reboot timer, keep USB-C data restricted while locked, configure the duress PIN only after understanding its irreversible wipe behavior, and periodically use Auditor to validate device integrity.
 
 ---
 
-## 14. What's Possible Next
+## 15. What's Possible Next
 
 | Idea | What it would replace | Enables |
 |---|---|---|
