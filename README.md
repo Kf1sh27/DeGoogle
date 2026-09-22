@@ -1,5 +1,10 @@
-# De-Google Security & Data Sovereignty Architecture
 
+<p align="center">
+    <em><b><i>🔒 Privacy is a right. Protecting it is a choice.</b></i></em>
+</p>
+
+
+# De-Google Security & Data Sovereignty Architecture
 **A Personal Privacy Infrastructure Blueprint** — GrapheneOS + self-hosted services + local-first design.
 
 | Metadata | Value |
