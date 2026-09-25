@@ -3,35 +3,43 @@
     <em><b><i>🔒 Privacy is a right. Protecting it is a choice.</b></i></em>
 </p>
 
+<p align="center">
+    <img alt="Status" src="https://img.shields.io/badge/status-living%20document-brightgreen">
+    <img alt="Platform" src="https://img.shields.io/badge/platform-GrapheneOS-blueviolet">
+    <img alt="Services Replaced" src="https://img.shields.io/badge/services%20replaced-17%2F17-success">
+    <img alt="Google Account Usage" src="https://img.shields.io/badge/account--level%20Google%20usage-0%25-success">
+</p>
 
 # De-Google Security & Data Sovereignty Architecture
 **A Personal Privacy Infrastructure Blueprint** — GrapheneOS + self-hosted services + local-first design.
 
+> Every category of personal data lives on infrastructure *I* control — no Google account, no vendor lock-in, independent encrypted backups.
+
 | Metadata | Value |
 |---|---|
-| Document Type | Security Architecture / Privacy Infrastructure Whitepaper |
-| Classification | Personal — Non-Commercial |
-| Scope | Mobile OS, Identity, Data Storage, Backup, Automation |
-| Audience | Privacy seekers, Self-Hosters, GrapheneOS Users |
-| Status | Living Document |
+| 📄 Document Type | Security Architecture / Privacy Infrastructure Whitepaper |
+| 🔐 Classification | Personal — Non-Commercial |
+| 🧩 Scope | Mobile OS, Identity, Data Storage, Backup, Automation |
+| 🎯 Audience | Privacy seekers, Self-Hosters, GrapheneOS Users |
+| 🟢 Status | Living Document |
 
 ## Table of Contents
 
-1. [Architecture Overview](#1-architecture-overview)
-2. [GrapheneOS Security Features](#2-grapheneos-security-features)
-3. [Google Service Replacement Matrix](#3-google-service-replacement-matrix)
-4. [Progress Scorecard](#4-progress-scorecard)
-5. [Data Ownership Matrix](#5-data-ownership-matrix)
-6. [Architecture Decision Records](#6-architecture-decision-records)
-7. [Credential & 2FA Architecture](#7-credential--2fa-architecture)
-8. [Data Criticality Tiers & Flow](#8-data-criticality-tiers--flow)
-9. [Internet Access to Hosted Applications](#9-internet-access-to-hosted-applications)
-10. [Backup Architecture](#10-backup-architecture)
-11. [Disaster Recovery](#11-disaster-recovery)
-12. [Threat Model](#12-threat-model)
-13. [Remaining Google Dependency](#13-remaining-google-dependency)
-14. [Security Exceptions](#14-security-exceptions)
-15. [What's Possible Next](#15-whats-possible-next)
+1. 🏗️ [Architecture Overview](#1-architecture-overview)
+2. 🛡️ [GrapheneOS Security Features](#2-grapheneos-security-features)
+3. 🔄 [Google Service Replacement Matrix](#3-google-service-replacement-matrix)
+4. 📊 [Progress Scorecard](#4-progress-scorecard)
+5. 🗂️ [Data Ownership Matrix](#5-data-ownership-matrix)
+6. 📝 [Architecture Decision Records](#6-architecture-decision-records)
+7. 🔑 [Credential & 2FA Architecture](#7-credential--2fa-architecture)
+8. 🌊 [Data Criticality Tiers & Flow](#8-data-criticality-tiers--flow)
+9. 🌐 [Internet Access to Hosted Applications](#9-internet-access-to-hosted-applications)
+10. 💾 [Backup Architecture](#10-backup-architecture)
+11. 🚑 [Disaster Recovery](#11-disaster-recovery)
+12. ⚔️ [Threat Model](#12-threat-model)
+13. 🔗 [Remaining Google Dependency](#13-remaining-google-dependency)
+14. ⚠️ [Security Exceptions](#14-security-exceptions)
+15. 🚀 [What's Possible Next](#15-whats-possible-next)
 
 ---
 
@@ -391,4 +399,4 @@ Use a long passphrase, enable the auto-reboot timer, keep USB-C data restricted 
 
 ---
 
-*Living document — update as components are added, replaced, or deprecated.*
+📌 *Living document — update as components are added, replaced, or deprecated.*
