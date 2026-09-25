@@ -1,4 +1,3 @@
-
 <p align="center">
     <em><b><i>🔒 Privacy is a right. Protecting it is a choice.</b></i></em>
 </p>
@@ -183,6 +182,10 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 
 ## 4. Progress Scorecard
 
+<p align="center">
+  <img src="assets/progress-scorecard.svg" alt="Progress scorecard pie chart" width="760" height="430" />
+</p>
+
 | Metric | Value |
 |---|---|
 | Services replaced | 17 / 17 |
@@ -349,7 +352,7 @@ flowchart TB
 
 ## 13. Remaining Google Dependency
 
-Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. The Play Store is retained for official banking and UPI application distribution. No Google account is required for the primary data architecture, and map navigation can be performed offline with Organic Maps or HERE WeGo's downloaded maps.
+Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. The Play Store is retained for official banking and UPI app distribution. No Google account is required for the primary data architecture, and map navigation can be performed offline with Organic Maps or HERE WeGo's downloaded maps.
 
 ---
 
