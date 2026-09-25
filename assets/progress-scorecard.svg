@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 430" role="img" aria-labelledby="title desc">
+  <title id="title">Progress Scorecard</title>
+  <desc id="desc">Pie chart showing 11 fully self-hosted services, 4 client-only or local-first services, 1 security exception, and 1 network policy control.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #24292f; }
+    .label { font-size: 16px; font-weight: 600; }
+    .value { font-size: 14px; fill: #57606a; }
+  </style>
+  <rect width="760" height="430" rx="16" fill="#ffffff"/>
+  <text x="380" y="38" text-anchor="middle" font-size="24" font-weight="700">Progress Scorecard — 17/17 services replaced</text>
+  <!-- 11/17 = 232.94°, 4/17 = 84.71°, 1/17 = 21.18°, 1/17 = 21.18° -->
+  <path d="M 220 225 L 220 75 A 150 150 0 1 1 82.9 285.8 Z" fill="#2da44e" stroke="#fff" stroke-width="3"/>
+  <path d="M 220 225 L 82.9 285.8 A 150 150 0 0 1 182.5 77.2 Z" fill="#0969da" stroke="#fff" stroke-width="3"/>
+  <path d="M 220 225 L 182.5 77.2 A 150 150 0 0 1 220 75 Z" fill="#bf8700" stroke="#fff" stroke-width="3"/>
+  <path d="M 220 225 L 220 75 A 150 150 0 0 1 220 75 Z" fill="#8250df" stroke="#fff" stroke-width="3"/>
+  <circle cx="220" cy="225" r="58" fill="#fff"/>
+  <text x="220" y="218" text-anchor="middle" font-size="28" font-weight="700">100%</text>
+  <text x="220" y="241" text-anchor="middle" class="value">replaced</text>
+  <g transform="translate(430 120)">
+    <rect width="20" height="20" rx="4" fill="#2da44e"/><text x="34" y="16" class="label">Fully self-hosted</text><text x="34" y="37" class="value">11 (64.7%)</text>
+    <rect y="70" width="20" height="20" rx="4" fill="#0969da"/><text x="34" y="86" class="label">Client-only / local-first</text><text x="34" y="107" class="value">4 (23.5%)</text>
+    <rect y="140" width="20" height="20" rx="4" fill="#bf8700"/><text x="34" y="156" class="label">Security exception</text><text x="34" y="177" class="value">1 (5.9%)</text>
+    <rect y="210" width="20" height="20" rx="4" fill="#8250df"/><text x="34" y="226" class="label">Network policy enforcement</text><text x="34" y="247" class="value">1 (5.9%)</text>
+  </g>
+</svg>
