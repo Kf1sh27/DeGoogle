@@ -147,23 +147,23 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | Google Service | Replacement | Self-Hosted | Local-First | Official Site / Link |
 |---|---|:---:|:---:|---|
 | Android | GrapheneOS | N/A | ✔ | https://grapheneos.org |
-| Browser | [Vanadium](https://github.com/GrapheneOS/Vanadium) | N/A | ✔ | https://github.com/GrapheneOS/Vanadium |
-| Contacts | DAVx5 + **Nextcloud CardDAV** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
-| Calendar | DAVx5 + **Nextcloud CalDAV** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
-| Tasks | **DAVx5 + Nextcloud Tasks** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
-| Maps | **HERE WeGo + Organic Maps** | ✖ | ✔ (offline maps) | https://wego.here.com / https://organicmaps.app |
-| Photos | Immich / Synology Photos | ✔ | ✔ | https://immich.app / https://www.synology.com |
-| Password Manager + Authenticator | **Bitwarden (self-hosted)** — vault + built-in TOTP | ✔ | ✔ | https://bitwarden.com |
+| Browser | Vanadium | N/A | ✔ | https://grapheneos.org/vanadium |
+| Contacts | DAVx5 + Nextcloud CardDAV | ✔ | ✔ | https://nextcloud.com |
+| Calendar | DAVx5 + Nextcloud CalDAV | ✔ | ✔ | https://nextcloud.com |
+| Tasks | DAVx5 + Nextcloud Tasks | ✔ | ✔ | https://nextcloud.com |
+| Maps | HERE WeGo + Organic Maps | ✖ | ✔ (offline maps) | https://organicmaps.app |
+| Photos | Immich / Synology Photos | ✔ | ✔ | https://immich.app |
+| Password Manager + Authenticator | Bitwarden (self-hosted) — vault + built-in TOTP | ✔ | ✔ | https://bitwarden.com |
 | YouTube | NewPipe | ✖ | N/A | https://newpipe.net |
-| Location History | **Traccar Client + Traccar Server** | ✔ | ✔ | https://www.traccar.org |
+| Location History | Traccar Client + Traccar Server | ✔ | ✔ | https://www.traccar.org |
 | Drive Sync | SambaLite | ✔ | ✔ | https://github.com/CGSLabs/SambaLite |
-| Drive (sensitive files) | DroidFS | Optional | ✔ | https://github.com/droidfs/ | 
-| YouTube Music | Jellyfin / Poweramp | ✔ | ✔ | https://jellyfin.org / https://powerampapp.com |
+| Drive (sensitive files) | DroidFS | Optional | ✔ | https://github.com/droidfs/DroidFS |
+| YouTube Music | Jellyfin / Poweramp | ✔ | ✔ | https://jellyfin.org |
 | Recorder | Fossify Voice Recorder | ✖ | ✔ | https://www.fossify.org |
 | Home | Home Assistant | ✔ | ✔ | https://www.home-assistant.io |
-| Banking / UPI payments | Official apps from sandboxed Google Play Store — security exception | ✖ | Partial | Official app listing from the sandboxed Google Play Store |
-| Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ | https://github.com/M66B/NetGuard |
-| Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ | https://grapheneos.org / https://restic.net / https://www.duplicati.com |
+| Banking / UPI payments | Official apps from sandboxed Google Play Store — security exception | ✖ | Partial | Google Play Store |
+| Network Policy Engine | NetGuard — per-app firewall, LAN-only enforcement | N/A | ✔ | https://github.com/M66B/NetGuard |
+| Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ | https://restic.net |
 
 ### Maps: HERE WeGo and Organic Maps
 
@@ -178,10 +178,6 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 
 ## 4. Progress Scorecard
 
-<p align="center">
-  <img src="assets/progress-scorecard.svg" alt="Progress scorecard pie chart" width="760" height="430" />
-</p>
-
 | Metric | Value |
 |---|---|
 | Services replaced | 17 / 17 |
@@ -191,6 +187,13 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 | Network policy enforcement | 1 (NetGuard) |
 | Remaining Google dependency | Sandboxed Play Services + Play Store exception |
 | Account-level Google usage | 0% |
+
+```mermaid
+pie title De-Google Progress by Category
+    "Self-Hosted" : 11
+    "Local-First (Client-Only)" : 4
+    "Partial Replacement" : 2
+```
 
 ---
 
