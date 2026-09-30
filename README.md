@@ -44,7 +44,7 @@
 
 ## 1. Architecture Overview
 
-**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account, no vendor lock-in, independent encrypted backups.
+**Goal:** Every category of personal data terminates on infrastructure the user controls (device or homelab), reachable over open protocols, with independent encrypted backups — no Google account, no vendor lock-in, and no single point of failure by design.
 
 Four layers:
 
@@ -144,33 +144,33 @@ These controls are complementary: a strong passphrase and reboot policy protect 
 
 ## 3. Google Service Replacement Matrix
 
-| Google Service | Replacement | Self-Hosted | Local-First |
-|---|---|:---:|:---:|
-| Android | GrapheneOS | N/A | ✔ |
-| Browser | [Vanadium](https://github.com/GrapheneOS/Vanadium) | N/A | ✔ |
-| Contacts | DAVx5 + **Nextcloud CardDAV** | ✔ | ✔ |
-| Calendar | DAVx5 + **Nextcloud CalDAV** | ✔ | ✔ |
-| Tasks | **DAVx5 + Nextcloud Tasks** | ✔ | ✔ |
-| Maps | **HERE WeGo + Organic Maps** | ✖ | ✔ (offline maps) |
-| Photos | Immich / Synology Photos | ✔ | ✔ |
-| Password Manager + Authenticator | **Bitwarden (self-hosted)** — vault + built-in TOTP | ✔ | ✔ |
-| YouTube | NewPipe | ✖ | N/A |
-| Location History | **Traccar Client + Traccar Server** | ✔ | ✔ |
-| Drive Sync | SambaLite | ✔ | ✔ |
-| Drive (sensitive files) | DroidFS | Optional | ✔ |
-| YouTube Music | Jellyfin / Poweramp | ✔ | ✔ |
-| Recorder | Fossify Voice Recorder | ✖ | ✔ |
-| Home | Home Assistant | ✔ | ✔ |
-| Banking / UPI payments | Official apps from sandboxed Google Play Store — security exception | ✖ | Partial |
-| Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ |
-| Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ |
+| Google Service | Replacement | Self-Hosted | Local-First | Official Site / Link |
+|---|---|:---:|:---:|---|
+| Android | GrapheneOS | N/A | ✔ | https://grapheneos.org |
+| Browser | [Vanadium](https://github.com/GrapheneOS/Vanadium) | N/A | ✔ | https://github.com/GrapheneOS/Vanadium |
+| Contacts | DAVx5 + **Nextcloud CardDAV** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
+| Calendar | DAVx5 + **Nextcloud CalDAV** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
+| Tasks | **DAVx5 + Nextcloud Tasks** | ✔ | ✔ | https://www.davx5.com / https://nextcloud.com |
+| Maps | **HERE WeGo + Organic Maps** | ✖ | ✔ (offline maps) | https://wego.here.com / https://organicmaps.app |
+| Photos | Immich / Synology Photos | ✔ | ✔ | https://immich.app / https://www.synology.com |
+| Password Manager + Authenticator | **Bitwarden (self-hosted)** — vault + built-in TOTP | ✔ | ✔ | https://bitwarden.com |
+| YouTube | NewPipe | ✖ | N/A | https://newpipe.net |
+| Location History | **Traccar Client + Traccar Server** | ✔ | ✔ | https://www.traccar.org |
+| Drive Sync | SambaLite | ✔ | ✔ | https://github.com/CGSLabs/SambaLite |
+| Drive (sensitive files) | DroidFS | Optional | ✔ | https://github.com/droidfs/ | 
+| YouTube Music | Jellyfin / Poweramp | ✔ | ✔ | https://jellyfin.org / https://powerampapp.com |
+| Recorder | Fossify Voice Recorder | ✖ | ✔ | https://www.fossify.org |
+| Home | Home Assistant | ✔ | ✔ | https://www.home-assistant.io |
+| Banking / UPI payments | Official apps from sandboxed Google Play Store — security exception | ✖ | Partial | Official app listing from the sandboxed Google Play Store |
+| Network Policy Engine | **NetGuard** — per-app firewall, LAN-only enforcement | N/A | ✔ | https://github.com/M66B/NetGuard |
+| Backup | GrapheneOS Export + SambaLite + Restic/Duplicati | ✔ | ✔ | https://grapheneos.org / https://restic.net / https://www.duplicati.com |
 
 ### Maps: HERE WeGo and Organic Maps
 
-- **HERE WeGo** remains the general-purpose navigation option for turn-by-turn routing, traffic-aware travel, transit support, and downloadable maps. It is a third-party service and is not self-hosted.
-- **Organic Maps** is an open-source, privacy-oriented navigation and mapping application based on OpenStreetMap data. It supports downloadable offline maps, offline search, walking, hiking, cycling, and other modes.
-- Organic Maps is local-first for map browsing and navigation after the relevant regional maps have been downloaded. Map data still needs periodic downloads and updates, and routing quality, traffic information, and transit coverage differ from HERE WeGo.
-- Download map regions over a trusted connection, keep the app and map data updated, and use GrapheneOS location controls to grant location access only while the app is in use. NetGuard can restrict network access if offline operation is the goal.
+- **HERE WeGo** remains the general-purpose navigation option for turn-by-turn routing, traffic-aware travel, transit support, and downloadable maps. It is a third-party service and is not self-hosted, but it avoids a Google account and keeps map navigation on the device.
+- **Organic Maps** is an open-source, privacy-oriented navigation and mapping application based on OpenStreetMap data. It supports downloadable offline maps, offline search, walking, hiking, cycling, and navigation with local regional data.
+- Organic Maps is local-first for map browsing and navigation after the relevant regional maps have been downloaded. Map data still needs periodic downloads and updates, and routing quality, traffic information, and transit depth may vary compared with cloud-centric map providers.
+- Download map regions over a trusted connection, keep the app and map data updated, and use GrapheneOS location controls to grant location access only while the app is in use. NetGuard can restrict which apps may reach map services or external endpoints.
 
 **Only remaining Google footprint:** sandboxed Google Play Services and the Google Play Store, retained only for app compatibility and the banking/UPI security exception documented in [Section 14](#14-security-exceptions).
 
@@ -248,7 +248,7 @@ Passwords and TOTP/2FA secrets live in **one self-hosted Bitwarden vault**. Clie
 
 **DroidFS note:** use DroidFS for encrypted sensitive-file storage in the local-first design. If a paid solution is specifically required, use Cryptomator as the exception.
 
-**Trade-off:** storing TOTP seeds with passwords reduces separation of secrets; a full vault compromise exposes both factors. This is accepted because the vault is locally encrypted, self-hosted, and verified through independent backup testing.
+**Trade-off:** storing TOTP seeds with passwords reduces separation of secrets; a full vault compromise exposes both factors. This is accepted because the vault is locally encrypted, self-hosted, and backed up independently.
 
 ---
 
@@ -279,16 +279,16 @@ The `cloudflared` connector runs inside the homelab and establishes an outbound,
 
 ### Security and privacy considerations
 
-- **Reduce network exposure:** The home router can keep inbound ports closed, reducing scanning and direct attack surface. This does not make applications safe by itself; each exposed application still requires strong authentication, up-to-date code, and careful configuration.
+- **Reduce network exposure:** The home router can keep inbound ports closed, reducing scanning and direct attack surface. This does not make applications safe by itself; each exposed application still needs auth, patching, and a narrow allowlist.
 - **Encrypt in transit:** Use HTTPS at the Cloudflare edge and validate the tunnel-to-origin path. Do not treat the tunnel as a replacement for application-layer authentication.
-- **Authenticate before forwarding:** Use Cloudflare Access, service-specific authentication, or both for administrative applications. Prefer identity-aware policies, MFA, short sessions, and device compliance checks.
-- **Expose the minimum:** Publish separate hostnames only for services that genuinely need internet access. Keep SMB, databases, Docker APIs, backup repositories, and management interfaces LAN-only or behind an additional authentication layer.
-- **Protect secrets:** Cloudflare can observe metadata and, depending on the configuration and termination point, plaintext application traffic. Do not expose unencrypted services or assume the tunnel is a substitute for end-to-end encryption.
-- **Limit service permissions:** Run `cloudflared` with least privilege, isolate it from unrelated containers, restrict origin firewall rules, and prevent the reverse proxy from becoming a general-purpose gateway.
+- **Authenticate before forwarding:** Use Cloudflare Access, service-specific authentication, or both for administrative applications. Prefer identity-aware policies, MFA, short sessions, and device checks where possible.
+- **Expose the minimum:** Publish separate hostnames only for services that genuinely need internet access. Keep SMB, databases, Docker APIs, backup repositories, and management interfaces LAN-only or blocked from public routes.
+- **Protect secrets:** Cloudflare can observe metadata and, depending on the configuration and termination point, plaintext application traffic. Do not expose unencrypted services or assume the tunnel protects you from an app vulnerability.
+- **Limit service permissions:** Run `cloudflared` with least privilege, isolate it from unrelated containers, restrict origin firewall rules, and prevent the reverse proxy from becoming a general-purpose public endpoint.
 - **Monitor and recover:** Review Cloudflare and reverse-proxy access logs, alert on unusual locations or request rates, rate-limit public endpoints, and have a plan to revoke tunnel credentials.
-- **Client-side controls still apply:** On GrapheneOS, use separate user profiles where appropriate and use NetGuard to restrict which apps may reach public hostnames. Organic Maps can be kept offline-only via NetGuard rules.
+- **Client-side controls still apply:** On GrapheneOS, use separate user profiles where appropriate and use NetGuard to restrict which apps may reach public hostnames. Organic Maps can be kept offline where practical.
 
-Cloudflare Tunnel improves reachability and removes inbound port-forwarding; it does not eliminate trust in Cloudflare, protect a vulnerable application, or replace strong authentication, patching, and isolation.
+Cloudflare Tunnel improves reachability and removes inbound port-forwarding; it does not eliminate trust in Cloudflare, protect a vulnerable application, or replace strong authentication, patching, and defense-in-depth.
 
 ---
 
@@ -320,9 +320,9 @@ flowchart TB
 
 | Scenario | Recovery path |
 |---|---|
-| Device loss/failure | Restore GrapheneOS backup export and Bitwarden vault sync/export; reinstall and reconfigure Traccar Client and map applications; DAVx5 re-syncs contacts, calendars, and tasks from Nextcloud; re-download offline maps |
+| Device loss/failure | Restore GrapheneOS backup export and Bitwarden vault sync/export; reinstall and reconfigure Traccar Client and map applications; DAVx5 re-syncs contacts, calendars, and tasks from the self-hosted server |
 | NAS failure | Restore services and media from Restic/Duplicati secondary repositories |
-| Nextcloud failure | Restore Nextcloud from Restic/Duplicati and re-sync via DAVx5 | 
+| Nextcloud failure | Restore Nextcloud from Restic/Duplicati and re-sync via DAVx5 |
 | Backup corruption | Use redundant tools and periodic verification |
 | NetGuard config loss | Re-apply policy from device configuration backup |
 | Cloudflare Tunnel compromise | Revoke tunnel credentials, recreate the connector, rotate Access credentials, and review origin logs |
@@ -351,7 +351,7 @@ flowchart TB
 
 ## 13. Remaining Google Dependency
 
-Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. The Play Store is used exclusively for banking and UPI applications from verified official publishers, kept in a restricted user profile.
+Sandboxed Google Play Services and the sandboxed Google Play Store are retained only as narrowly scoped exceptions. Play Services supports apps requiring push delivery or proprietary APIs. The Play Store is retained for official banking and UPI app distribution where the provider requires it. Everything else remains local-first or self-hosted.
 
 ---
 
@@ -359,7 +359,7 @@ Sandboxed Google Play Services and the sandboxed Google Play Store are retained 
 
 ### Banking and UPI payment applications
 
-Banking and UPI applications must be downloaded from the **official Google Play Store running as a sandboxed GrapheneOS app**, not from APK mirrors, unofficial repositories, or random direct-download links.
+Banking and UPI applications must be downloaded from the **official Google Play Store running as a sandboxed GrapheneOS app**, not from APK mirrors, unofficial repositories, or random direct-download links. The security exception is narrow and deliberate: the app itself is official, but the distribution path is only tolerated because it remains contained in a sandboxed profile.
 
 Users should verify the developer name, package identity, permissions, and update behavior. Recommended controls:
 
@@ -372,17 +372,17 @@ Users should verify the developer name, package identity, permissions, and updat
 
 ### Maps and navigation applications
 
-Use **Organic Maps** when privacy, offline operation, and OpenStreetMap-based navigation are the priority. Download only the regions needed, update them periodically over a trusted network, and allow location access only while the app is in use.
+Use **Organic Maps** when privacy, offline operation, and OpenStreetMap-based navigation are the priority. Download only the regions needed, update them periodically over a trusted network, and allow access only when the app is in use.
 
-Use **HERE WeGo** when traffic-aware routing, transit information, or broader online navigation features are more important. Treat it as a third-party service rather than a self-hosted or fully local solution.
+Use **HERE WeGo** when traffic-aware routing, transit information, or broader online navigation features are more important. Treat it as a third-party service rather than a self-hosted or fully local dependency.
 
 ### Vanadium as the default browser
 
-[Vanadium](https://github.com/GrapheneOS/Vanadium) replaces the default browser application. It is the general-purpose browser for this architecture, with GrapheneOS hardening, JavaScript JIT disabled by default, and control-flow protections. No Google account is required.
+[Vanadium](https://github.com/GrapheneOS/Vanadium) replaces the default browser application. It is the general-purpose browser for this architecture, with GrapheneOS hardening, JavaScript JIT disabled by default, and no Google account requirement.
 
 ### Hardware and physical-access baseline
 
-Use a long passphrase, enable the auto-reboot timer, keep USB-C data restricted while locked, configure the duress PIN only after understanding its irreversible wipe behavior, and periodically use Auditor to verify device integrity.
+Use a long passphrase, enable the auto-reboot timer, keep USB-C data restricted while locked, configure the duress PIN only after understanding its irreversible wipe behavior, and periodically use Auditor to validate firmware and OS integrity.
 
 ---
 
